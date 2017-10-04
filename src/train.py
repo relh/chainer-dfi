@@ -191,7 +191,7 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
     link.x.data[...] = initial_x
     optimizer = LBFGS(lr, stack_size=5)
     optimizer.setup(link)
-    for j in six.moves.range(600):
+    for j in six.moves.range(args.residuals):
         losses = update(net, optimizer, link, org_layers, tv_weight)
         if (j + 1) % 20 == 0:
             z = cuda.to_cpu(link.x.data)
