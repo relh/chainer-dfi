@@ -15,7 +15,7 @@ def parse_arg():
     parser.add_argument('input_index', type=int, help='Input image index')
     parser.add_argument('feature', type=str, help='Feature name. Words must be concatenated with "_", and leading with "~" indicates set feature off (e.g. ~no_beard). You can use multiple features with comma separated feature names (e.g. ~mouth_closed,smiling)')
     parser.add_argument('output_image', type=str, help='Output image file path')
-    parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU device index (negative value indicate CPU)')
+    parser.add_argument('--gpu', '-g', type=int, default=0, help='GPU device index (negative value indicate CPU)')
     parser.add_argument('--model', '-m', type=str, default='vgg19.model', help='Model file path')
     parser.add_argument('--batch_size', '-b', type=int, default=10, help='Mini batch size')
     parser.add_argument('--lr', '-l', type=float, default=1, help='Learning rate')
@@ -86,6 +86,30 @@ def main():
     image_path = make_image_path(args.image_dir, args.input_name, args.input_index)
     clip_rect = (40, 20, 210, 190)
     train(args, image_path, source_paths, target_paths, clip_rect, clip_rect)
+
+def main_server(args=None):
+    if args is None:
+        args = parse_arg()
+    attribute_dataset = load_attribute_dataset(args.attr_file)
+    attribute = find_attribute(attribute_dataset, args.input_name, args.input_index)
+    features = args.feature.lower().split(',')
+    feature_flags = []
+    for feature in features:
+        if feature.startswith('~'):
+            feature = feature[1:]
+            feature_flags.append((feature, False))
+        else:
+            feature_flags.append((feature, True))
+        if not feature in attribute_names:
+            print('Error: {} is invalid attribute'.format(feature))
+            exit()
+    source_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image, reverse=True)
+    target_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image)
+    source_paths = image_paths(args.image_dir, attribute_dataset, source_indices)
+    target_paths = image_paths(args.image_dir, attribute_dataset, target_indices)
+    #image_path = make_image_path(args.image_dir, args.input_name, args.input_index)
+    clip_rect = (40, 20, 210, 190) # (0, 0, 267, 264) 200, 200)
+    train(args, args.image_path, source_paths, target_paths, clip_rect, clip_rect)
 
 if __name__ == '__main__':
     main()
