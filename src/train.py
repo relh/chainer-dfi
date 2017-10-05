@@ -12,7 +12,7 @@ from chainer import serializers
 from net import VGG19
 from lbfgs import LBFGS
 
-input_image_size = (200, 200)
+input_image_size = (83, 83)
 
 def parse_arg():
     parser = argparse.ArgumentParser('Deep Feature Interpolation')
@@ -197,9 +197,9 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
             z = cuda.to_cpu(link.x.data)
             z = adjust_color_distribution(z, image_mean, image_std)
             residuals.append(z - image)
-    #for i in six.moves.range(1, 6):
-    w = 0.5 #i * 0.1
-    i = 5
+    #for i in six.moves.range(1, args.ws):
+    i = args.ws
+    w = i * 0.1
     print('Generating image for weight: {0:.2f}'.format(w))
     link = chainer.Link(x=x.shape)
     if device_id >= 0:
