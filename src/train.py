@@ -15,23 +15,38 @@ from lbfgs import LBFGS
 #input_image_size = (83, 83)
 input_image_size = (166, 166)
 
+
 def parse_arg():
     parser = argparse.ArgumentParser('Deep Feature Interpolation')
-    parser.add_argument('input_image', type=str, help='Image file path to be interpolated')
-    parser.add_argument('output_image', type=str, help='Output image file path')
-    parser.add_argument('source_list', type=str, help='Source image list file path')
-    parser.add_argument('target_list', type=str, help='Target image list file path')
-    parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU device index (negative value indicates CPU)')
-    parser.add_argument('--model', '-m', type=str, default='vgg19.model', help='Model file path')
-    parser.add_argument('--batch_size', '-b', type=int, default=10, help='Mini batch size')
-    parser.add_argument('--lr', '-l', type=float, default=1, help='Learning rate')
+    parser.add_argument('input_image', type=str,
+                        help='Image file path to be interpolated')
+    parser.add_argument('output_image', type=str,
+                        help='Output image file path')
+    parser.add_argument('source_list', type=str,
+                        help='Source image list file path')
+    parser.add_argument('target_list', type=str,
+                        help='Target image list file path')
+    parser.add_argument('--gpu', '-g', type=int, default=-1,
+                        help='GPU device index (negative value indicates CPU)')
+    parser.add_argument('--model', '-m', type=str,
+                        default='vgg19.model', help='Model file path')
+    parser.add_argument('--batch_size', '-b', type=int,
+                        default=10, help='Mini batch size')
+    parser.add_argument('--lr', '-l', type=float,
+                        default=1, help='Learning rate')
     parser.add_argument('--iter', '-i', type=int, default=1000)
-    parser.add_argument('--clip-rect', '-c', type=str, default=None, help='Clipping rect for source/target images: (left, top, right, bottom)')
-    parser.add_argument('--input-clip-rect', type=str, default=None, help='Clipping rect for input image: (left, top, right, bottom)')
-    parser.add_argument('--max-image', type=int, default=2000, help='Maximum number of source/target images to be loaded')
-    parser.add_argument('--near-image', type=int, default=100, help='Maximum number of source/target images for nearest neighbor')
-    parser.add_argument('--tv-weight', type=float, default=100.0, help='Total variation loss weight')
+    parser.add_argument('--clip-rect', '-c', type=str, default=None,
+                        help='Clipping rect for source/target images: (left, top, right, bottom)')
+    parser.add_argument('--input-clip-rect', type=str, default=None,
+                        help='Clipping rect for input image: (left, top, right, bottom)')
+    parser.add_argument('--max-image', type=int, default=2000,
+                        help='Maximum number of source/target images to be loaded')
+    parser.add_argument('--near-image', type=int, default=100,
+                        help='Maximum number of source/target images for nearest neighbor')
+    parser.add_argument('--tv-weight', type=float,
+                        default=100.0, help='Total variation loss weight')
     return parser.parse_args()
+
 
 def preprocess_image(image, image_size, clip_rect=None):
     if clip_rect is not None:
@@ -40,13 +55,17 @@ def preprocess_image(image, image_size, clip_rect=None):
     x = np.asarray(image, dtype=np.float32)
     return VGG19.preprocess(x, input_type='RGB')
 
+
 def postprocess_image(original_image, diff):
     diff = diff.transpose((0, 2, 3, 1))
-    diff = diff.reshape(diff.shape[1:])[:,:,::-1]
+    diff = diff.reshape(diff.shape[1:])[:, :, ::-1]
     diff = (diff + 128).clip(0, 255).astype(np.uint8)
-    diff_image = Image.fromarray(diff).resize(original_image.size, Image.BILINEAR)
-    image = np.asarray(original_image, dtype=np.int32) + np.asarray(diff_image, dtype=np.int32) - 128
+    diff_image = Image.fromarray(diff).resize(
+        original_image.size, Image.BILINEAR)
+    image = np.asarray(original_image, dtype=np.int32) + \
+        np.asarray(diff_image, dtype=np.int32) - 128
     return Image.fromarray(image.clip(0, 255).astype(np.uint8))
+
 
 def list_dir_image(path, max_size):
     files = os.listdir(path)
@@ -60,19 +79,23 @@ def list_dir_image(path, max_size):
             break
     return paths
 
+
 def make_dir(path):
     if os.path.exists(path):
         return
     os.makedirs(path)
+
 
 def parse_numbers(rect_str):
     if not rect_str:
         return None
     return tuple(map(int, rect_str.split(',')))
 
+
 def feature(net, x, layers=['3_1', '4_1', '5_1']):
     y = net(x)
     return [F.reshape(y[layer], (y[layer].shape[0], -1)) for layer in layers]
+
 
 def rank_image(net, paths, image_size, image, top_num, clip_rect=None):
     xp = net.xp
@@ -86,12 +109,14 @@ def rank_image(net, paths, image_size, image, top_num, clip_rect=None):
     rank = np.argsort(diffs)
     return [paths[r] for r in rank[:top_num]]
 
+
 def mean_feature(net, paths, image_size, base_feature, top_num, batch_size, clip_rect=None):
     xp = net.xp
     image_num = len(paths)
     features = []
     for i in six.moves.range(0, image_num, batch_size):
-        x = [preprocess_image(Image.open(path).convert('RGB'), image_size, clip_rect) for path in paths[i:i + batch_size]]
+        x = [preprocess_image(Image.open(path).convert(
+            'RGB'), image_size, clip_rect) for path in paths[i:i + batch_size]]
         x = xp.asarray(np.concatenate(x, axis=0))
         y = feature(net, x)
         features.append([cuda.to_cpu(layer.data) for layer in y])
@@ -102,11 +127,13 @@ def mean_feature(net, paths, image_size, base_feature, top_num, batch_size, clip
         diff = np.sum((last_features - base_feature) ** 2, axis=1)
 
         nearest_indices = np.argsort(diff)[:top_num]
-        nearests = [np.concatenate(xs, axis=0)[nearest_indices] for xs in zip(*features)]
+        nearests = [np.concatenate(xs, axis=0)[nearest_indices]
+                    for xs in zip(*features)]
     else:
         nearests = [np.concatenate(xs, axis=0) for xs in zip(*features)]
 
     return [xp.asarray(np.mean(f, axis=0, keepdims=True)) for f in nearests]
+
 
 def normalized_diff(s, t):
     xp = cuda.get_array_module(s)
@@ -114,12 +141,16 @@ def normalized_diff(s, t):
     norm = xp.asarray(np.linalg.norm(cuda.to_cpu(w), axis=1, keepdims=True))
     return w / norm
 
+
 def total_variation(x):
     xp = cuda.get_array_module(x.data)
     b, ch, h, w = x.shape
-    wh = xp.asarray([[[[1], [-1]], [[0], [0]], [[0], [0]]], [[[0], [0]], [[1], [-1]], [[0], [0]]], [[[0], [0]], [[0], [0]], [[1], [-1]]]], dtype=np.float32)
-    ww = xp.asarray([[[[1, -1]], [[0, 0]], [[0, 0]]], [[[0, 0]], [[1, -1]], [[0, 0]]], [[[0, 0]], [[0, 0]], [[1, -1]]]], dtype=np.float32)
+    wh = xp.asarray([[[[1], [-1]], [[0], [0]], [[0], [0]]], [[[0], [0]], [[1], [-1]],
+                                                             [[0], [0]]], [[[0], [0]], [[0], [0]], [[1], [-1]]]], dtype=np.float32)
+    ww = xp.asarray([[[[1, -1]], [[0, 0]], [[0, 0]]], [[[0, 0]], [[1, -1]],
+                                                       [[0, 0]]], [[[0, 0]], [[0, 0]], [[1, -1]]]], dtype=np.float32)
     return (F.sum(F.convolution_2d(x, W=wh) ** 2) + F.sum(F.convolution_2d(x, W=ww) ** 2)) / np.prod(x.shape, dtype=np.float32)
+
 
 def update(net, optimizer, link, target_layers, tv_weight=0.001):
     layers = feature(net, link.x)
@@ -137,13 +168,16 @@ def update(net, optimizer, link, target_layers, tv_weight=0.001):
     optimizer.update()
     return losses
 
+
 def adjust_color_distribution(x, mean, std):
     m = np.mean(x, axis=(2, 3), keepdims=True)
     s = np.std(x, axis=(2, 3), keepdims=True)
     return (x - m) / s * std + mean
 
+
 def find_nearest(xs, t):
     return min(xs, key=lambda x: np.linalg.norm(x - t))
+
 
 def train(args, image_path, source_image_paths, target_image_paths, input_clip_rect=None, clip_rect=None):
     iteration = args.iter
@@ -168,19 +202,25 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
     x = xp.asarray(image)
     org_layers = feature(net, x)
     org_layers = [layer.data for layer in org_layers]
-    org_layer_norms = [xp.asarray(np.linalg.norm(cuda.to_cpu(layer), axis=1, keepdims=True)) for layer in org_layers]
+    org_layer_norms = [xp.asarray(np.linalg.norm(cuda.to_cpu(
+        layer), axis=1, keepdims=True)) for layer in org_layers]
 
     print('Calculating source feature')
     if len(source_image_paths) > near_image_num:
-        source_image_paths = rank_image(net, source_image_paths, input_image_size, image, near_image_num, clip_rect)
-    source_feature = mean_feature(net, source_image_paths, input_image_size, org_layers[-1], near_image_num, batch_size, clip_rect)
+        source_image_paths = rank_image(
+            net, source_image_paths, input_image_size, image, near_image_num, clip_rect)
+    source_feature = mean_feature(net, source_image_paths, input_image_size,
+                                  org_layers[-1], near_image_num, batch_size, clip_rect)
 
     print('Calculating target feature')
     if len(target_image_paths) > near_image_num:
-        target_image_paths = rank_image(net, target_image_paths, input_image_size, image, near_image_num, clip_rect)
-    target_feature = mean_feature(net, target_image_paths, input_image_size, org_layers[-1], near_image_num, batch_size, clip_rect)
+        target_image_paths = rank_image(
+            net, target_image_paths, input_image_size, image, near_image_num, clip_rect)
+    target_feature = mean_feature(net, target_image_paths, input_image_size,
+                                  org_layers[-1], near_image_num, batch_size, clip_rect)
 
-    attribute_vectors = [normalized_diff(s, t) for s, t in zip(source_feature, target_feature)]
+    attribute_vectors = [normalized_diff(
+        s, t) for s, t in zip(source_feature, target_feature)]
 
     base, ext = os.path.splitext(args.output_image)
     residuals = []
@@ -198,7 +238,7 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
             z = cuda.to_cpu(link.x.data)
             z = adjust_color_distribution(z, image_mean, image_std)
             residuals.append(z - image)
-    #for i in six.moves.range(1, args.ws):
+    # for i in six.moves.range(1, args.ws):
     i = args.ws
     w = i * 0.1
     print('Generating image for weight: {0:.2f}'.format(w))
@@ -206,10 +246,11 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
     if device_id >= 0:
         link.to_gpu(device_id)
     link.x.data[...] = initial_x
-    target_layers = [layer + w * n * a for layer, n, a in zip(org_layers, org_layer_norms,  attribute_vectors)]
+    target_layers = [layer + w * n * a for layer, n,
+                     a in zip(org_layers, org_layer_norms,  attribute_vectors)]
     optimizer = LBFGS(lr, stack_size=5)
     optimizer.setup(link)
-    for j in six.moves.range(iteration*2):
+    for j in six.moves.range(iteration * 2):
         losses = update(net, optimizer, link, target_layers, tv_weight)
         if (j + 1) % 100 == 0:
             print('iter {} done loss:'.format(j + 1))
@@ -226,6 +267,7 @@ def train(args, image_path, source_image_paths, target_image_paths, input_clip_r
     file_name = '{0}_{1:02d}{2}'.format(base, i, ext)
     postprocess_image(original_image, z - image).save(file_name)
     print('Completed')
+
 
 def main():
     args = parse_arg()
@@ -249,7 +291,9 @@ def main():
         if left >= right or top >= bottom:
             print('clip-rect ({}) is empty'.format(args.input_clip_rect))
             exit()
-    train(args, args.input_image, source_image_paths, target_image_paths, input_clip_rect, clip_rect)
+    train(args, args.input_image, source_image_paths,
+          target_image_paths, input_clip_rect, clip_rect)
+
 
 if __name__ == '__main__':
     main()

@@ -8,13 +8,16 @@ from chainer import serializers
 import sys
 from net import VGG19
 
+
 def copy_model(src, dst):
     assert isinstance(src, link.Chain)
     assert isinstance(dst, link.Chain)
     for child in src.children():
-        if child.name not in dst.__dict__: continue
+        if child.name not in dst.__dict__:
+            continue
         dst_child = dst[child.name]
-        if type(child) != type(dst_child): continue
+        if type(child) != type(dst_child):
+            continue
         if isinstance(child, link.Chain):
             copy_model(child, dst_child)
         if isinstance(child, link.Link):
@@ -32,6 +35,7 @@ def copy_model(src, dst):
             for a, b in zip(child.namedparams(), dst_child.namedparams()):
                 b[1].data = a[1].data
             print 'Copy %s' % child.name
+
 
 print 'load VGG19 caffemodel'
 ref = CaffeFunction('VGG_ILSVRC_19_layers.caffemodel')
