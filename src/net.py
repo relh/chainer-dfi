@@ -3,6 +3,7 @@ import chainer
 from chainer import functions as F
 from chainer import links as L
 
+
 class VGG19(chainer.Chain):
 
     mean = np.asarray([104, 117, 124], dtype=np.float32)
@@ -10,7 +11,7 @@ class VGG19(chainer.Chain):
     @classmethod
     def preprocess(cls, image, input_type='RGB'):
         if input_type == 'RGB':
-            image = image[:,:,::-1]
+            image = image[:, :, ::-1]
         image = np.rollaxis(image - cls.mean, 2)
         return image.reshape((1,) + image.shape)
 
@@ -19,7 +20,7 @@ class VGG19(chainer.Chain):
         image = image.reshape(image.shape[1:])
         image = np.transpose(image, (1, 2, 0)) + cls.mean
         if output_type == 'RGB':
-            return image[:,:,::-1]
+            return image[:, :, ::-1]
         else:
             return image
 
