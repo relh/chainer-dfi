@@ -83,7 +83,7 @@ def main_server(args=None):
     # custom construction
     attribute = np.mean(attribute_dataset[2], 0)
     for feature in feature_flags:
-        attribute[attribute_names.index(feature[0])] = .90 if feature[1] is True else -.90
+        attribute[attribute_names.index(feature[0])] = 1.0 if feature[1] is True else -1.0
 
     # silvio baseline 
     #args.input_name = "Silvio Berlusconi"

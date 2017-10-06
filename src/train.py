@@ -12,7 +12,8 @@ from chainer import serializers
 from net import VGG19
 from lbfgs import LBFGS
 
-input_image_size = (83, 83)
+#input_image_size = (83, 83)
+input_image_size = (166, 166)
 
 def parse_arg():
     parser = argparse.ArgumentParser('Deep Feature Interpolation')
