@@ -67,34 +67,36 @@ def find_attribute(attribute_dataset, name, index):
 def main_server(args=None):
     if args is None:
         args = parse_arg()
-    attribute_dataset = load_attribute_dataset(args.attr_file)
-    features = args.feature.lower().split(',')
-    feature_flags = []
-    for feature in features:
-        if feature.startswith('~'):
-            feature = feature[1:]
-            feature_flags.append((feature, False))
-        else:
-            feature_flags.append((feature, True))
-        if not feature in attribute_names:
-            print('Error: {} is invalid attribute'.format(feature))
-            exit()
+    if args.paths:
+      neg = './attribute_negative/'
+      pos = './attribute_positive/'
+      source_paths = [neg+f for f in os.listdir(neg)]
+      target_paths = [pos+f for f in os.listdir(pos)]
+    else:
+      attribute_dataset = load_attribute_dataset(args.attr_file)
+      features = args.feature.lower().split(',')
+      feature_flags = []
+      for feature in features:
+          if feature.startswith('~'):
+              feature = feature[1:]
+              feature_flags.append((feature, False))
+          else:
+              feature_flags.append((feature, True))
+          if not feature in attribute_names:
+              print('Error: {} is invalid attribute'.format(feature))
+              exit()
 
-    # custom construction
-    attribute = np.mean(attribute_dataset[2], 0)
-    for feature in feature_flags:
-        attribute[attribute_names.index(feature[0])] = 1.0 if feature[1] is True else -1.0
+      # custom construction
+      attribute = np.mean(attribute_dataset[2], 0)
+      for feature in feature_flags:
+          attribute[attribute_names.index(feature[0])] = 1.0 if feature[1] is True else -1.0
 
-    # silvio baseline 
-    #args.input_name = "Silvio Berlusconi"
-    #args.input_index = 23 
-    #attribute = find_attribute(attribute_dataset, args.input_name, args.input_index)
+      source_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image, reverse=True)
+      target_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image)
+      source_paths = image_paths(args.image_dir, attribute_dataset, source_indices)
+      target_paths = image_paths(args.image_dir, attribute_dataset, target_indices)
+      #image_path = make_image_path(args.image_dir, args.input_name, args.input_index)
 
-    source_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image, reverse=True)
-    target_indices = nearest_attributes(attribute_dataset, attribute, feature_flags, args.near_image)
-    source_paths = image_paths(args.image_dir, attribute_dataset, source_indices)
-    target_paths = image_paths(args.image_dir, attribute_dataset, target_indices)
-    #image_path = make_image_path(args.image_dir, args.input_name, args.input_index)
     clip_rect = None#(40, 20, 210, 190) # (0, 0, 267, 264) 200, 200)
     train(args, args.image_path, source_paths, target_paths, clip_rect, clip_rect)
 
