@@ -17,7 +17,8 @@ class LBFGSRule(optimizer.UpdateRule):
 
     def __init__(self, parent_hyperparam=None,
                  lr=None, stack_size=None, min_ro=None):
-        super(LBFGSRule, self).__init__(parent_hyperparam or _default_hyperparam)
+        super(LBFGSRule, self).__init__(
+            parent_hyperparam or _default_hyperparam)
         if lr is not None:
             self.hyperparam.lr = lr
         if stack_size is not None:
@@ -73,6 +74,7 @@ class LBFGSRule(optimizer.UpdateRule):
             b = ro * xp.dot(y.T, q)
             q += (a - b) * s
         param.data -= self.hyperparam.lr * xp.reshape(q, param.data.shape)
+
 
 class LBFGS(optimizer.GradientMethod):
     """L-BFGS.
